@@ -118,7 +118,7 @@ We compute intra/inter-community interaction contrast to measure alignment of le
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/<your-username>/InterGAT-GRU.git
+git clone https://github.com/Vamsi995/Rethinking-Graph-Attention.git
 cd InterGAT-GRU
 pip install -r requirements.txt
 ```
