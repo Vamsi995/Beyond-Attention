@@ -28,9 +28,14 @@ This repository contains the official implementation of **InterGAT-GRU**, a nove
 │   ├── meta_data/             # Training time logs
 │   ├── interaction_matrix/    # Raw interaction matrices
 │   └── preprocessing.py       # Dataset loader (CSV)
+|   └── utils.py               # Utilities
+├── experiments/               # Experimental Analysis
 ├── models/
-│   └── gat_gru.py             # InterGAT-GRU model definition
+│   └── gat_gru.py             # GAT-GRU model definition
+|   └── base_gat.py            # GAT Layer
+|   └── interactive_gat.py     # InterGAT Layer
 ├── train.py                   # Main training script
+├── validate.py                # Main validation script
 └── README.md
 ```
 
@@ -54,7 +59,7 @@ The encoding process follows:
 
 
 - **Spatial Aggregation**:
-  $\mathbf{Z}_i = \text{ELU} \left( \sum_{j=1}^{N} \mathbf{I}_{ij} \cdot \mathbf{h}_j \right)$
+  $\mathbf{Z}\_i = \text{ELU} \left( \sum_{j=1}^{N} \mathbf{I}_{ij} \cdot \mathbf{h}_j \right)$
 
 Where:
 - $\( \mathbf{I} \)$: trainable matrix, row-softmax normalized after symmetrization.
@@ -65,25 +70,27 @@ Where:
 
 The GRU module processes a sequence of spatial representations to capture temporal dynamics over time:
 
+$\mathbf{h}\_t = \text{GRU}(\mathbf{h}\_{t-1}, \mathbf{Z}_t)$
+
 
 The GRU output is passed through a linear layer to predict the target feature at future steps:
 
-$\hat{\mathbf{x}}_{t+\tau} = \text{Linear}(\mathbf{h}_t)$
+$\hat{\mathbf{x}}\_{t+\tau} = \text{Linear}(\mathbf{h}_t)$
 
 ### 🔹 Regularization
 
 To encourage sparsity and symmetry in $\( \mathbf{I} \)$, the model includes:
 
 - **L1 Regularization**:
-  $\mathcal{L}_{\text{sparse}} = \lambda_{\text{sparse}} \cdot \|\mathbf{I}\|_1$
+  $\mathcal{L}\_{\text{sparse}} = \lambda_{\text{sparse}} \cdot \|\mathbf{I}\|_1$
 
 - **Symmetry Constraint**:
   $\mathbf{I} \leftarrow \frac{1}{2}(\mathbf{I} + \mathbf{I}^\top)$
 
 ### 🔹 Complexity Analysis
 
-- Both GAT and InterGAT scale as \( \mathcal{O}(N^2) \), but InterGAT avoids repeated softmax and pairwise projections.
-- InterGAT computes and reuses a static \( \mathbf{I} \), which is more efficient for small-to-medium graphs.
+- Both GAT and InterGAT scale as $\( \mathcal{O}(N^2) \)$, but InterGAT avoids repeated softmax and pairwise projections.
+- InterGAT computes and reuses a static $\( \mathbf{I} \)$, which is more efficient for small-to-medium graphs.
 
 
 ---
@@ -105,13 +112,13 @@ To encourage sparsity and symmetry in $\( \mathbf{I} \)$, the model includes:
 
 We compute intra/inter-community interaction contrast to measure alignment of learned structure with spectral clusters. The aggregated head shows the **highest structural fidelity**, capturing modular behavior.
 
-| Head           | Mean Contrast (\( \frac{\mu_\text{intra} - \mu_\text{inter}}{\mu_\text{inter}} \)) | Std Dev |
+| Head           | Mean Contrast $(\( \frac{\mu_\text{intra} - \mu_\text{inter}}{\mu_\text{inter}} \))$ | Std Dev |
 |----------------|---------------------|----------|
-| Interaction 1  | 1.49                | 1.08     |
-| Interaction 2  | 0.76                | 0.79     |
-| Interaction 3  | 0.64                | 1.05     |
-| Interaction 4  | 3.27                | 4.16     |
-| Aggregated     | 1.47                | 1.01     |
+| Interaction 1  | 1.49                | 0.13     |
+| Interaction 2  | 0.76                | 0.09     |
+| Interaction 3  | 0.64                | 0.12     |
+| Interaction 4  | 3.27                | 0.34     |
+| Aggregated     | 1.47                | 0.28     |
 
 ---
 
@@ -119,7 +126,7 @@ We compute intra/inter-community interaction contrast to measure alignment of le
 
 ```bash
 git clone https://github.com/Vamsi995/Rethinking-Graph-Attention.git
-cd InterGAT-GRU
+cd Rethinking-Graph-Attention
 pip install -r requirements.txt
 ```
 
@@ -153,18 +160,6 @@ python train.py \
 - `checkpoints/`: Model checkpoints at every 10 epochs.
 - `best_model/`: Best model by validation loss.
 
----
-
-## 📚 Citation
-
-```bibtex
-@inproceedings{your2024intergat,
-  title     = {InterGAT-GRU: Interaction-Based Spatial Modeling for Spatio-Temporal Forecasting},
-  author    = {Your Name and Collaborator},
-  booktitle = {NeurIPS},
-  year      = {2024}
-}
-```
 
 ---
 
