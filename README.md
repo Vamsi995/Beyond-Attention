@@ -11,7 +11,7 @@ This repository contains the official implementation of **InterGAT-GRU**, a nove
 
 - **Adjacency-Free GAT Layer**: Replaces hard graph priors with a learnable interaction matrix.
 - **GRU-Based Temporal Module**: Handles sequential node-level forecasting.
-- **Efficiency**: Achieves **2× reduction** in per-epoch training time vs. GAT-GRU (see [Results](#results)).
+- **Efficiency**: Achieves **2× reduction** in per-epoch training time vs. GAT-GRU.
 - **Interpretability**: Learns sparse, symmetric matrices revealing community structures.
 - **Reproducible**: Deterministic data loaders and fixed seeds (optional).
 
