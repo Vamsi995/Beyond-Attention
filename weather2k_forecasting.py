@@ -533,12 +533,17 @@ def train(rank, world_size, model, optimizer, hyperparameters):
     # Instantiate the model and move it to the current GPU
     model = model.to(device)
     # Wrap the model with DDP
-    ddp_model = DDP(model, device_ids=[rank])
+    ddp_model = torch.nn.parallel.DistributedDataParallel(
+        model,
+        device_ids=[local_rank],
+        output_device=local_rank,
+        find_unused_parameters=True,  
+    )
 
     optimizer = torch.optim.Adam(ddp_model.parameters())
     criterion = hyperparameters.criterion
 
-    scaler = GradScaler()  # FP16 scaler
+    scaler = GradScaler(device_type="cuda")  # FP16 scaler
     accumulation_steps = 4
     adj_mat = hyperparameters.adj_mat.to(device)
 
@@ -564,7 +569,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
             inputs = inputs.reshape((b, t, n, 1))  # Add a channel dimension
 
 
-            with autocast():
+            with autocast(device_type="cuda", dtype=torch.float16):
                 outputs = ddp_model(inputs, adj_mat)
                 outputs = outputs.transpose(1, 2)
                 loss = criterion(outputs, targets)
