@@ -496,11 +496,11 @@ class Hyperparameters:
         # adj = data_module._adj
         self.adj_mat = torch.from_numpy(adj).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
-        self.checkpoint_dir = '/content/drive/MyDrive/checkpoints'
-        self.best_model_dir = '/content/drive/MyDrive/best_model'
-        self.meta_data_dir = '/content/drive/MyDrive/meta_data'
-        self.interaction_matrix_dir = '/content/drive/MyDrive/interaction_matrix'
-        self.interaction_matrix_norm_dir = '/content/drive/MyDrive/interaction_matrix_norm'
+        self.checkpoint_dir = 'checkpoints'
+        self.best_model_dir = 'best_model'
+        self.meta_data_dir = 'meta_data'
+        self.interaction_matrix_dir = 'interaction_matrix'
+        self.interaction_matrix_norm_dir = 'interaction_matrix_norm'
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         os.makedirs(self.best_model_dir, exist_ok=True)
         os.makedirs(self.meta_data_dir, exist_ok=True)
