@@ -528,7 +528,6 @@ def train(rank, world_size, model, optimizer, hyperparameters):
         world_size (int): Total number of processes.
     """
     # Initialize the process group for distributed training
-    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
     device = torch.device(f"cuda:{rank}")  # Set device to current GPU
 
     # Instantiate the model and move it to the current GPU
