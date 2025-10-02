@@ -543,7 +543,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
     optimizer = torch.optim.Adam(ddp_model.parameters())
     criterion = hyperparameters.criterion
 
-    scaler = GradScaler("cuda")  # FP16 scaler
+    scaler = GradScaler()  # FP16 scaler
     accumulation_steps = 4
     adj_mat = hyperparameters.adj_mat.to(device)
 
