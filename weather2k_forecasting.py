@@ -671,4 +671,4 @@ if __name__ == "__main__":
     
     train(local_rank, world_size, model, optimizer, hyperparameters) # no need for the spawn function
 
-
+    dist.destroy_process_group()
