@@ -647,8 +647,15 @@ def load_data(batch_size):
     return tra_loader, val_loader, tst_loader, adj
 
 
+def setup():
+    dist.init_process_group(backend="nccl")
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+    # Optional speedups
+    torch.backends.cudnn.benchmark = True
+
 if __name__ == "__main__":
 
+    setup()
     world_size = torch.cuda.device_count() # or os.environ['WORLD_SIZE']
     local_rank = int(os.environ['LOCAL_RANK']) # torchrun sets these environment variables
 
