@@ -164,14 +164,14 @@ def build_adj(adj_dist):
 
 
 
-def data_loader(X, Y, batch_size):
+def data_loader(X, Y, batch_size, shuffle=True, drop_last=True):
     cuda = True if torch.cuda.is_available() else False
     print('cuda :{}'.format(cuda))
     TensorFloat = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     X, Y = TensorFloat(X), TensorFloat(Y)
 
     data = torch.utils.data.TensorDataset(X, Y)
-    sampler = DistributedSampler(data, shuffle=True, drop_last=True)
+    sampler = DistributedSampler(data, shuffle=shuffle, drop_last=drop_last)
     per_gpu_batch = max(1, batch_size // dist.get_world_size())
     dataloader = torch.utils.data.DataLoader(data, batch_size=per_gpu_batch, sampler=sampler)
     return dataloader
