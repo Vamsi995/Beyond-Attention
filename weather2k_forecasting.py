@@ -511,7 +511,7 @@ class Hyperparameters:
         self.best_model_path = None
 
 
-def train(rank, world_size, model, optimizer, train_loader, epochs, criterion, adj_mat):
+def train(model, optimizer, hyperparameters):
     """Training function for each GPU process.
 
     Args:
@@ -519,24 +519,24 @@ def train(rank, world_size, model, optimizer, train_loader, epochs, criterion, a
         world_size (int): Total number of processes.
     """
     # Initialize the process group for distributed training
-    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    device = torch.device(f"cuda:{rank}")  # Set device to current GPU
+    # dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    # device = torch.device(f"cuda:{rank}")  # Set device to current GPU
 
     # Instantiate the model and move it to the current GPU
-    model = model.to(device)
+    model = model.to(hyperparameters.device)
     # Wrap the model with DDP
-    ddp_model = DDP(model, device_ids=[rank])
+    ddp_model = nn.DataParallel(model)
 
     optimizer = torch.optim.Adam(ddp_model.parameters())
     criterion = nn.CrossEntropyLoss()
 
     # Training Loop
-    for epoch in range(epochs):
+    for epoch in range(hyperparameters.epochs):
         model.train()  # Set model to training mode
         epoch_loss = 0.0
         # C = 0
 
-        for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs} - Training"):
+        for batch in tqdm(hyperparameters.train_loader, desc=f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training"):
             inputs, targets = batch
             inputs, targets = inputs.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu')), targets.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
@@ -546,7 +546,7 @@ def train(rank, world_size, model, optimizer, train_loader, epochs, criterion, a
             b, t, n = inputs.shape
             inputs = inputs.reshape((b, t, n, 1))  # Add a channel dimension
 
-            outputs = ddp_model(inputs, adj_mat)
+            outputs = ddp_model(inputs, hyperparameters.adj_mat)
             outputs = outputs.transpose(1, 2)
 
             loss = criterion(outputs, targets)
@@ -555,8 +555,8 @@ def train(rank, world_size, model, optimizer, train_loader, epochs, criterion, a
             loss.backward()
             optimizer.step()
 
-        avg_train_loss = epoch_loss / len(train_loader)
-        print(f"Epoch {epoch + 1}/{epochs} - Training Loss: {avg_train_loss:.4f}")
+        avg_train_loss = epoch_loss / len(hyperparameters.train_loader)
+        print(f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training Loss: {avg_train_loss:.4f}")
 
     # Clean up
     prefix_str = 'weather2k_gat_gru_traffic_pred'
@@ -627,8 +627,8 @@ if __name__ == "__main__":
 
     
 
-    world_size = torch.cuda.device_count() # or os.environ['WORLD_SIZE']
-    local_rank = int(os.environ['LOCAL_RANK']) # torchrun sets these environment variables
-    train(local_rank, world_size, model, optimizer, hyperparameters.train_loader, hyperparameters.epochs, hyperparameters.criterion, hyperparameters.adj_mat) # no need for the spawn function
+    # world_size = torch.cuda.device_count() # or os.environ['WORLD_SIZE']
+    # local_rank = int(os.environ['LOCAL_RANK']) # torchrun sets these environment variables
+    train(model, optimizer, hyperparameters) # no need for the spawn function
 
 
