@@ -228,8 +228,8 @@ class GraphAttentionLayer(nn.Module):
         # self.interaction_matrix_v = nn.Parameter(torch.ones(n_heads, 100, 1866))
         # nn.init.xavier_uniform_(self.interaction_matrix_u.data, gain=1.414)
         # nn.init.xavier_uniform_(self.interaction_matrix_v.data, gain=1.414)
-        # self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1866, 1866))
-        # nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
+        self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1866, 1866))
+        nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
 
 
 
