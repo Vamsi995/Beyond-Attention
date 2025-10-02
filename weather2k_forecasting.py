@@ -569,7 +569,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
             inputs = inputs.reshape((b, t, n, 1))  # Add a channel dimension
 
 
-            with autocast(device_type="cuda", dtype=torch.float16):
+            with autocast("cuda", dtype=torch.float16):
                 outputs = ddp_model(inputs, adj_mat)
                 outputs = outputs.transpose(1, 2)
                 loss = criterion(outputs, targets)
