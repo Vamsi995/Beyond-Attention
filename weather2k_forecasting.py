@@ -520,6 +520,11 @@ def reduce_mean(t):
     t /= dist.get_world_size()
     return t
 
+
+def is_main():
+    return (not dist.is_available()) or (not dist.is_initialized()) or dist.get_rank() == 0
+
+
 def train(rank, world_size, model, optimizer, hyperparameters, accumulation_steps, data_scaler, val_loader):
     """Training function for each GPU process.
 
@@ -599,15 +604,16 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
         scheduler.step()
 
 
-    # Clean up
-    prefix_str = 'weather2k_gat_gru_traffic_pred'
-    # Save the model
-    os.makedirs("torch_models", exist_ok=True)
-    torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
-
-    with torch.no_grad():
-        model.eval()
-        validate_easyst_style(val_loader, model, device, adj_mat, data_scaler, criterion)
+    if is_main():
+        # Clean up
+        prefix_str = 'weather2k_gat_gru_traffic_pred'
+        # Save the model
+        os.makedirs("torch_models", exist_ok=True)
+        torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
+        
+        with torch.no_grad():
+            model.eval()
+            validate_easyst_style(val_loader, model, device, adj_mat, data_scaler, criterion)
 
     dist.destroy_process_group()
 
