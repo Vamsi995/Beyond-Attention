@@ -536,7 +536,7 @@ class Hyperparameters:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # train_loader = data_module.train_dataloader()
         self.train_loader = tra_loader
-        self.weight_decay=1e-4
+        self.weight_decay=5e-4
         # Loss function
         self.criterion = nn.MSELoss()
         # adj = data_module._adj

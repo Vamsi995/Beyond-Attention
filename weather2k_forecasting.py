@@ -603,6 +603,21 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
         scheduler.step()
 
 
+        if is_main():
+            with torch.no_grad():
+                val_metrics = validate_easyst_style(
+                    val_loader=val_loader,
+                    model=getattr(ddp_model, "module", ddp_model).eval(),  # safe for DDP
+                    device=device,
+                    adj_mat=adj_mat,
+                    scaler=None,                 # or your data scaler if you have one
+                    criterion=criterion,
+                    mae_thresh=0.0,
+                    mape_thresh=0.0,
+                )
+                
+
+
     if is_main():
         # Clean up
         prefix_str = 'weather2k_gat_gru_traffic_pred'

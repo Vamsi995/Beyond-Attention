@@ -240,10 +240,8 @@ def validate_easyst_style(val_loader, model, device, adj_mat, scaler, criterion,
                 x = x.reshape((b, t, n, 1))  # Add a channel dimension
 
             # Get predictions
-            if adj_mat is not None:
-                predictions = model(x, adj_mat)
-            else:
-                predictions = model(x)
+            predictions = model(x, adj_mat)
+
 
             # Reshape predictions to match targets
             predictions = predictions.transpose(1, 2)  # Reshape predictions
@@ -293,5 +291,11 @@ def validate_easyst_style(val_loader, model, device, adj_mat, scaler, criterion,
     print(f"sMAPE: {smape * 100:.4f}%")
     print(f"RRSE: {rrse:.4f}")
     print(f"Correlation: {corr:.4f}")
+
+
+    return {
+        "mae": mae,
+        "rmse": rmse
+    }
 
 
