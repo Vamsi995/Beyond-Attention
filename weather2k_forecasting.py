@@ -597,11 +597,7 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
         
         epoch_loss = reduce_mean(running / len(hyperparameters.train_loader))
 
-            # epoch_loss += loss.item()
-            # loss.backward()
-            # optimizer.step()
-
-        # avg_train_loss = epoch_loss / len(hyperparameters.train_loader)
+           
         print(f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training Loss: {epoch_loss:.4f}")
         
 
@@ -618,21 +614,18 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
                     mae_thresh=0.0,
                     mape_thresh=0.0,
                 )
+            plateau_value = float(val_metrics["mae"])
+        else:
+            plateau_value = 0.0  # placeholder on non-zero ranks
         
+        metric_tensor = torch.tensor([plateau_value], device=device)
 
+        if dist.is_available() and dist.is_initialized():
+        # make all ranks use rank0's metric
+            dist.broadcast(metric_tensor, src=0)
 
-        
-        if is_main():
-            # pick the metric you want to plateau on (common: val MAE)
-            metric_value = float(val_metrics["mae"])
-            metric_tensor = torch.tensor([metric_value], device=device)
-
-            # broadcast the metric so every rank steps the scheduler identically
-            if dist.is_available() and dist.is_initialized():
-                dist.broadcast(metric_tensor, src=0)
-
-        # now every rank steps the scheduler with the same value
         scheduler.step(metric_tensor.item())
+
 
 
     if is_main():
