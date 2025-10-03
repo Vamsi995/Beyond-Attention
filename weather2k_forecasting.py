@@ -543,7 +543,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
 
     scaler = GradScaler()  # FP16 scaler
     adj_mat = hyperparameters.adj_mat.to(device)
-    scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100], gamma=0.5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
     # )
