@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
 from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
-from torch.optim.lr_scheduler import LinearLR, SequentialLR
+from torch.optim.lr_scheduler import LinearLR, SequentialLR, MultiStepLR
 
 from utils import validate_easyst_style
 import copy
@@ -543,34 +543,10 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
 
     scaler = GradScaler()  # FP16 scaler
     adj_mat = hyperparameters.adj_mat.to(device)
-    # scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100], gamma=0.5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
     # )
-
-
-
-    # --- counts in OPTIMIZER-UPDATE units (not dataloader steps) ---
-    steps_per_epoch   = len(hyperparameters.train_loader)
-    updates_per_epoch = math.ceil(steps_per_epoch / accumulation_steps)
-    total_updates     = hyperparameters.epochs * updates_per_epoch
-
-    # linear warmup (5% of total updates)
-    warmup_updates = max(1, int(0 * total_updates))  # set to 0 for no warmup
-    decay_updates  = max(1, total_updates - warmup_updates)
-
-    # optional LR floor
-    min_lr   = 1e-5
-    base_lrs = [g["lr"] for g in optimizer.param_groups]
-    # final factor as a fraction of base LR (decays toward ~min_lr for the LARGEST base LR)
-    final_factor = max(0.0, min_lr / max(base_lrs))
-
-    # warmup: tiny -> 1.0; decay: 1.0 -> final_factor
-    warmup_sched = LinearLR(optimizer, start_factor=1e-3, end_factor=1.0, total_iters=warmup_updates)
-    decay_sched  = LinearLR(optimizer, start_factor=1.0, end_factor=final_factor, total_iters=decay_updates)
-
-    # scheduler = SequentialLR(optimizer, schedulers=[decay_sched], milesto)  # switch after warmup
-    scheduler = decay_sched
 
     # Training Loop
     for epoch in range(hyperparameters.epochs):
