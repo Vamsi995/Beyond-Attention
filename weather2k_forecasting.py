@@ -569,8 +569,8 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     warmup_sched = LinearLR(optimizer, start_factor=1e-3, end_factor=1.0, total_iters=warmup_updates)
     decay_sched  = LinearLR(optimizer, start_factor=1.0, end_factor=final_factor, total_iters=decay_updates)
 
-    scheduler = SequentialLR(optimizer, schedulers=[decay_sched])  # switch after warmup
-
+    # scheduler = SequentialLR(optimizer, schedulers=[decay_sched], milesto)  # switch after warmup
+    scheduler = decay_sched
 
     # Training Loop
     for epoch in range(hyperparameters.epochs):
