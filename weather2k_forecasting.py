@@ -479,7 +479,7 @@ class Hyperparameters:
 
     def __init__(self, tra_loader, adj):
         self.learning_rate = 3e-4
-        self.epochs = 100
+        self.epochs = 1
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 64
