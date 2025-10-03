@@ -478,7 +478,7 @@ class Hyperparameters:
     def __init__(self, tra_loader, adj):
         self.K = 70
         self.learning_rate = 3e-4
-        self.epochs = 10
+        self.epochs = 1
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 32
@@ -598,7 +598,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
     # Clean up
     prefix_str = 'weather2k_gat_gru_traffic_pred'
     # Save the model
-    torch.save(model.state_dict(), f'./torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
+    torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
 
 
     dist.destroy_process_group()
@@ -673,6 +673,5 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
 
     
-    train(local_rank, world_size, model, optimizer, hyperparameters) # no need for the spawn function
-
+    train(local_rank, world_size, model, optimizer, hyperparameters)
     dist.destroy_process_group()
