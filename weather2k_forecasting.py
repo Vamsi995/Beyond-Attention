@@ -658,6 +658,15 @@ def setup():
     # Optional speedups
     torch.backends.cudnn.benchmark = True
 
+
+def cleanup():
+    if dist.is_available() and dist.is_initialized():
+        try:
+            dist.barrier()
+        except Exception:
+            pass
+        dist.destroy_process_group()
+
 if __name__ == "__main__":
 
     setup()
@@ -675,4 +684,4 @@ if __name__ == "__main__":
 
     
     train(local_rank, world_size, model, optimizer, hyperparameters)
-    dist.destroy_process_group()
+    cleanup()
