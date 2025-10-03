@@ -610,7 +610,7 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
                     model=getattr(ddp_model, "module", ddp_model).eval(),  # safe for DDP
                     device=device,
                     adj_mat=adj_mat,
-                    scaler=None,                 # or your data scaler if you have one
+                    scaler=data_scaler,                 # or your data scaler if you have one
                     criterion=criterion,
                     mae_thresh=0.0,
                     mape_thresh=0.0,
