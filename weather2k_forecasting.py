@@ -598,6 +598,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
     # Clean up
     prefix_str = 'weather2k_gat_gru_traffic_pred'
     # Save the model
+    os.makedirs("torch_models", exist_ok=True)
     torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
 
 
