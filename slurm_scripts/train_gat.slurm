@@ -11,7 +11,7 @@
 
 export TORCH_EXTENSIONS_DIR="/expanse/lustre/projects/csb193/salisetti"
 
-source /expanse/lustre/projects/csb193/salisetti/Beyond-Attention/VirtualEnv/bin/activate
+source /expanse/lustre/projects/csb193/salisetti/Beyond-Attention/VirtualEnv/sptemp/bin/activate
 
 module reset
 module load cuda11.7/toolkit
