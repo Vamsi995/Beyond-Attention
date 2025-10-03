@@ -1,6 +1,7 @@
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 def MAE_torch(pred, true, mask_value=None):
     if mask_value != None:
@@ -204,7 +205,7 @@ def SIGIR_Metrics(pred, true, mask1, mask2):
     corr = CORR_torch(pred, true, 0)
     return rrse, corr
 
-def validate_easyst_style(val_loader, mae_thresh=0.0, mape_thresh=0.0):
+def validate_easyst_style(val_loader, model, device, adj_mat, scaler, criterion, mae_thresh=0.0, mape_thresh=0.0):
     """
     Validation function using EasyST framework's evaluation approach
 

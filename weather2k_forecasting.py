@@ -23,7 +23,18 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
 from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
+from torch.optim.lr_scheduler import MultiStepLR
 
+
+import torch
+from torch import nn
+from typing import Optional
+from torch.func import vmap
+
+import torch
+from torch import nn
+import torch.nn.functional as F
+import copy
 
 
 class MinMax01Scaler:
@@ -106,7 +117,7 @@ def Add_Window_Horizon(data, window=3, horizon=1, single=False):
 
 
 
-import copy
+
 
 def is_sym(adj):
     return np.allclose(adj, adj.T)
@@ -164,7 +175,7 @@ def build_adj(adj_dist):
 
 
 
-def data_loader(X, Y, batch_size, shuffle=True, drop_last=True):
+def data_loader(X, Y, batch_size, accumulation_steps, shuffle=True, drop_last=True):
     cuda = True if torch.cuda.is_available() else False
     print('cuda :{}'.format(cuda))
     TensorFloat = torch.cuda.FloatTensor if cuda else torch.FloatTensor
@@ -172,7 +183,7 @@ def data_loader(X, Y, batch_size, shuffle=True, drop_last=True):
 
     data = torch.utils.data.TensorDataset(X, Y)
     sampler = DistributedSampler(data, shuffle=shuffle, drop_last=drop_last)
-    per_gpu_batch = max(1, batch_size // dist.get_world_size())
+    per_gpu_batch = max(1, batch_size // (dist.get_world_size() * accumulation_steps))
     dataloader = torch.utils.data.DataLoader(data, batch_size=per_gpu_batch, sampler=sampler)
     return dataloader
 
@@ -183,9 +194,6 @@ def data_loader(X, Y, batch_size, shuffle=True, drop_last=True):
 ## Graph Attention Layers
 """
 
-import torch
-from torch import nn
-import torch.nn.functional as F
 
 
 class GraphAttentionLayer(nn.Module):
@@ -330,9 +338,7 @@ class GraphAttentionLayer(nn.Module):
 
         return h_prime
 
-import torch
-from torch import nn
-import torch.nn.functional as F
+
 
 ################################
 ###    GAT NETWORK MODULE    ###
@@ -401,10 +407,6 @@ class GAT(nn.Module):
 
 """## GAT GRU Forecast"""
 
-import torch
-from torch import nn
-from typing import Optional
-from torch.func import vmap
 
 
 class GAT_GRU_Forecaster(nn.Module):
@@ -476,13 +478,12 @@ class Hyperparameters:
     # Hyperparameters
 
     def __init__(self, tra_loader, adj):
-        self.K = 70
         self.learning_rate = 3e-4
         self.epochs = 1
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
-        self.n_hidden = 32
-        self.gru_hidden = 32
+        self.n_hidden = 64
+        self.gru_hidden = 64
         self.n_heads = 4
         self.dropout = 0.6
         self.alpha = 0.2
@@ -490,7 +491,6 @@ class Hyperparameters:
         self.seq_len = 12  # Sequence length (time steps)
         self.n_nodes = 1866  # Number of nodes (traffic sensors, locations, etc.)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.gamma=0.9 # Covariance update factor
         # train_loader = data_module.train_dataloader()
         self.train_loader = tra_loader
         self.weight_decay=1e-4
@@ -520,7 +520,7 @@ def reduce_mean(t):
     t /= dist.get_world_size()
     return t
 
-def train(rank, world_size, model, optimizer, hyperparameters):
+def train(rank, world_size, model, optimizer, hyperparameters, accumulation_steps):
     """Training function for each GPU process.
 
     Args:
@@ -544,8 +544,8 @@ def train(rank, world_size, model, optimizer, hyperparameters):
     criterion = hyperparameters.criterion
 
     scaler = GradScaler()  # FP16 scaler
-    accumulation_steps = 4
     adj_mat = hyperparameters.adj_mat.to(device)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
 
 
     # Training Loop
@@ -580,6 +580,8 @@ def train(rank, world_size, model, optimizer, hyperparameters):
 
 
             if (step + 1) % accumulation_steps == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(ddp_model.parameters(), 1.0)
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
@@ -594,12 +596,16 @@ def train(rank, world_size, model, optimizer, hyperparameters):
 
         # avg_train_loss = epoch_loss / len(hyperparameters.train_loader)
         print(f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training Loss: {epoch_loss:.4f}")
+        scheduler.step()
+
 
     # Clean up
     prefix_str = 'weather2k_gat_gru_traffic_pred'
     # Save the model
     os.makedirs("torch_models", exist_ok=True)
     torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
+
+
 
 
     dist.destroy_process_group()
@@ -613,7 +619,7 @@ def train(rank, world_size, model, optimizer, hyperparameters):
 
 
 
-def load_data(batch_size):
+def load_data(batch_size, accumulation_steps):
 
     data_path = os.path.join('weather2k_1866x40896x3.npz')
     fdata = np.load(data_path)
@@ -645,9 +651,9 @@ def load_data(batch_size):
 
     adj, adj_weight = build_adj(adj)
 
-    tra_loader = data_loader(x_tra, y_tra, batch_size, shuffle=True, drop_last=True)
-    val_loader = data_loader(x_val, y_val, batch_size, shuffle=False, drop_last=True)
-    tst_loader = data_loader(x_test, y_test, batch_size, shuffle=False, drop_last=False)
+    tra_loader = data_loader(x_tra, y_tra, batch_size, accumulation_steps, shuffle=True, drop_last=True)
+    val_loader = data_loader(x_val, y_val, batch_size, accumulation_steps, shuffle=False, drop_last=True)
+    tst_loader = data_loader(x_test, y_test, batch_size, accumulation_steps, shuffle=False, drop_last=False)
 
     return tra_loader, val_loader, tst_loader, adj
 
@@ -674,7 +680,8 @@ if __name__ == "__main__":
     local_rank = int(os.environ['LOCAL_RANK']) # torchrun sets these environment variables
 
     batch_size = 32
-    tra_loader, val_loader, tst_loader, adj = load_data(batch_size)
+    accumulation_steps = 2
+    tra_loader, val_loader, tst_loader, adj = load_data(batch_size, accumulation_steps)
 
     hyperparameters = Hyperparameters(tra_loader, adj)
 
@@ -683,5 +690,5 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
 
     
-    train(local_rank, world_size, model, optimizer, hyperparameters)
+    train(local_rank, world_size, model, optimizer, hyperparameters, accumulation_steps)
     cleanup()
