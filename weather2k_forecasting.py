@@ -627,9 +627,9 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
             metric_value = float(val_metrics["mae"])
             metric_tensor = torch.tensor([metric_value], device=device)
 
-        # broadcast the metric so every rank steps the scheduler identically
-        if dist.is_available() and dist.is_initialized():
-            dist.broadcast(metric_tensor, src=0)
+            # broadcast the metric so every rank steps the scheduler identically
+            if dist.is_available() and dist.is_initialized():
+                dist.broadcast(metric_tensor, src=0)
 
         # now every rank steps the scheduler with the same value
         scheduler.step(metric_tensor.item())
