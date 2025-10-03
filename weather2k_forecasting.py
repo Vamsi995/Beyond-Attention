@@ -470,7 +470,7 @@ class Hyperparameters:
     # Hyperparameters
 
     def __init__(self, tra_loader, adj):
-        self.learning_rate = 3e-4
+        self.learning_rate = 1e-3
         self.epochs = 100
 
         self.batch_size = 8
@@ -556,7 +556,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     total_updates     = hyperparameters.epochs * updates_per_epoch
 
     # linear warmup (5% of total updates)
-    warmup_updates = max(1, int(0 * total_updates))  # set to 0 for no warmup
+    warmup_updates = max(1, int(0.05 * total_updates))  # set to 0 for no warmup
     decay_updates  = max(1, total_updates - warmup_updates)
 
     # optional LR floor
