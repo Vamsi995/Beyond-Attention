@@ -25,7 +25,7 @@ from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import MultiStepLR
 
-
+from utils import validate_easyst_style
 import torch
 from torch import nn
 from typing import Optional
@@ -479,7 +479,7 @@ class Hyperparameters:
 
     def __init__(self, tra_loader, adj):
         self.learning_rate = 3e-4
-        self.epochs = 1
+        self.epochs = 100
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 64
@@ -520,7 +520,7 @@ def reduce_mean(t):
     t /= dist.get_world_size()
     return t
 
-def train(rank, world_size, model, optimizer, hyperparameters, accumulation_steps):
+def train(rank, world_size, model, optimizer, hyperparameters, accumulation_steps, data_scaler, val_loader):
     """Training function for each GPU process.
 
     Args:
@@ -605,8 +605,9 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
     os.makedirs("torch_models", exist_ok=True)
     torch.save(model.state_dict(), f'torch_models/{prefix_str}_gat_gru_traffic_prediction.pth')
 
-
-
+    with torch.no_grad():
+        model.eval()
+        validate_easyst_style(val_loader, model, device, adj_mat, data_scaler, criterion)
 
     dist.destroy_process_group()
 
@@ -655,7 +656,7 @@ def load_data(batch_size, accumulation_steps):
     val_loader = data_loader(x_val, y_val, batch_size, accumulation_steps, shuffle=False, drop_last=True)
     tst_loader = data_loader(x_test, y_test, batch_size, accumulation_steps, shuffle=False, drop_last=False)
 
-    return tra_loader, val_loader, tst_loader, adj
+    return tra_loader, val_loader, tst_loader, adj, scaler
 
 
 def setup():
@@ -681,7 +682,7 @@ if __name__ == "__main__":
 
     batch_size = 32
     accumulation_steps = 2
-    tra_loader, val_loader, tst_loader, adj = load_data(batch_size, accumulation_steps)
+    tra_loader, val_loader, tst_loader, adj, scaler = load_data(batch_size, accumulation_steps)
 
     hyperparameters = Hyperparameters(tra_loader, adj)
 
@@ -690,5 +691,5 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
 
     
-    train(local_rank, world_size, model, optimizer, hyperparameters, accumulation_steps)
+    train(local_rank, world_size, model, optimizer, hyperparameters, accumulation_steps, scaler, val_loader)
     cleanup()

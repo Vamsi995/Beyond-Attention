@@ -17,4 +17,4 @@ module reset
 module load cuda11.7/toolkit
 
 cd /expanse/lustre/projects/csb193/salisetti/Beyond-Attention
-torchrun --nproc_per_node=4 weather2k_forecasting.py
+torchrun --nproc_per_node=2 weather2k_forecasting.py
