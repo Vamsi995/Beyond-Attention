@@ -553,7 +553,7 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
     adj_mat = hyperparameters.adj_mat.to(device)
     # scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=2, threshold=1e-3, verbose=is_main()
+        optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
     )
 
 
@@ -625,6 +625,10 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
             dist.broadcast(metric_tensor, src=0)
 
         scheduler.step(metric_tensor.item())
+
+        if is_main():
+            cur_lr = optimizer.param_groups[0]["lr"]
+            print(f"LR after scheduler.step: {cur_lr:.6g}")
 
 
 
