@@ -470,7 +470,7 @@ class Hyperparameters:
     # Hyperparameters
 
     def __init__(self, tra_loader, adj):
-        self.learning_rate = 1e-3
+        self.learning_rate = 3e-4
         self.epochs = 100
 
         self.batch_size = 8
@@ -538,7 +538,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
         find_unused_parameters=True,  
     )
 
-    optimizer = optim.Adam(ddp_model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
+    optimizer = optim.Adam(ddp_model.parameters(), weight_decay=hyperparameters.weight_decay)
     criterion = hyperparameters.criterion
 
     scaler = GradScaler()  # FP16 scaler
@@ -556,7 +556,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     total_updates     = hyperparameters.epochs * updates_per_epoch
 
     # linear warmup (5% of total updates)
-    warmup_updates = max(1, int(0.05 * total_updates))  # set to 0 for no warmup
+    warmup_updates = max(1, int(0 * total_updates))  # set to 0 for no warmup
     decay_updates  = max(1, total_updates - warmup_updates)
 
     # optional LR floor
@@ -569,8 +569,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     warmup_sched = LinearLR(optimizer, start_factor=1e-3, end_factor=1.0, total_iters=warmup_updates)
     decay_sched  = LinearLR(optimizer, start_factor=1.0, end_factor=final_factor, total_iters=decay_updates)
 
-    scheduler = SequentialLR(optimizer, schedulers=[warmup_sched, decay_sched],
-                            milestones=[warmup_updates])  # switch after warmup
+    scheduler = SequentialLR(optimizer, schedulers=[decay_sched])  # switch after warmup
 
 
     # Training Loop
