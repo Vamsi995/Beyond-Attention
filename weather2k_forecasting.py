@@ -584,7 +584,6 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
             
-            scheduler.step()
             running += loss.detach() * accumulation_steps
         
         epoch_loss = reduce_mean(running / len(hyperparameters.train_loader))
@@ -600,7 +599,8 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
 
-            scheduler.step()
+
+        scheduler.step()
 
 
         if is_main():
