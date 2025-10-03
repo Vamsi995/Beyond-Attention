@@ -538,7 +538,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
         find_unused_parameters=True,  
     )
 
-    optimizer = optim.Adam(ddp_model.parameters(), weight_decay=hyperparameters.weight_decay)
+    optimizer = optim.Adam(ddp_model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
     criterion = hyperparameters.criterion
 
     scaler = GradScaler()  # FP16 scaler
@@ -583,8 +583,8 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
-                scheduler.step()
-
+            
+            scheduler.step()
             running += loss.detach() * accumulation_steps
         
         epoch_loss = reduce_mean(running / len(hyperparameters.train_loader))
