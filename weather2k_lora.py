@@ -610,8 +610,6 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
             inputs, targets = batch
             inputs, targets = inputs.to(device), targets.to(device)
 
-            optimizer.zero_grad()
-
             # Forward pass
             b, t, n = inputs.shape
             inputs = inputs.reshape((b, t, n, 1))  # Add a channel dimension

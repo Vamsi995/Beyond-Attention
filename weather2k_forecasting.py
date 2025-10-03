@@ -480,7 +480,7 @@ class Hyperparameters:
     def __init__(self, tra_loader, adj):
         self.learning_rate = 3e-4
         self.epochs = 100
-        
+
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 64
@@ -567,8 +567,6 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
         for step, batch in enumerate(tqdm(hyperparameters.train_loader, desc=f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training")):
             inputs, targets = batch
             inputs, targets = inputs.to(device), targets.to(device)
-
-            optimizer.zero_grad()
 
             # Forward pass
             b, t, n = inputs.shape
