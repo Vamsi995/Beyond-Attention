@@ -551,7 +551,10 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
 
     scaler = GradScaler()  # FP16 scaler
     adj_mat = hyperparameters.adj_mat.to(device)
-    scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
+    # scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=3, threshold=1e-3, verbose=is_main()
+    )
 
 
     # Training Loop
@@ -600,7 +603,7 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
 
         # avg_train_loss = epoch_loss / len(hyperparameters.train_loader)
         print(f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training Loss: {epoch_loss:.4f}")
-        scheduler.step()
+        
 
 
         if is_main():
@@ -615,7 +618,8 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
                     mae_thresh=0.0,
                     mape_thresh=0.0,
                 )
-                
+        
+        scheduler.step(val_metrics["mae"])
 
 
     if is_main():
