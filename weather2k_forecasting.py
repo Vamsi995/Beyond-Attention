@@ -16,24 +16,16 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
+import math
 
 import torch.optim as optim
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
 from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
-from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 from utils import validate_easyst_style
-import torch
-from torch import nn
-from typing import Optional
-from torch.func import vmap
-
-import torch
-from torch import nn
-import torch.nn.functional as F
 import copy
 
 
@@ -552,9 +544,33 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     scaler = GradScaler()  # FP16 scaler
     adj_mat = hyperparameters.adj_mat.to(device)
     # scheduler = MultiStepLR(optimizer, milestones=[1, 50, 100], gamma=0.5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
-    )
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
+    # )
+
+
+
+    # --- counts in OPTIMIZER-UPDATE units (not dataloader steps) ---
+    steps_per_epoch   = len(hyperparameters.train_loader)
+    updates_per_epoch = math.ceil(steps_per_epoch / accumulation_steps)
+    total_updates     = hyperparameters.epochs * updates_per_epoch
+
+    # linear warmup (5% of total updates)
+    warmup_updates = max(1, int(0 * total_updates))  # set to 0 for no warmup
+    decay_updates  = max(1, total_updates - warmup_updates)
+
+    # optional LR floor
+    min_lr   = 1e-5
+    base_lrs = [g["lr"] for g in optimizer.param_groups]
+    # final factor as a fraction of base LR (decays toward ~min_lr for the LARGEST base LR)
+    final_factor = max(0.0, min_lr / max(base_lrs))
+
+    # warmup: tiny -> 1.0; decay: 1.0 -> final_factor
+    warmup_sched = LinearLR(optimizer, start_factor=1e-3, end_factor=1.0, total_iters=warmup_updates)
+    decay_sched  = LinearLR(optimizer, start_factor=1.0, end_factor=final_factor, total_iters=decay_updates)
+
+    scheduler = SequentialLR(optimizer, schedulers=[warmup_sched, decay_sched],
+                            milestones=[warmup_updates])  # switch after warmup
 
 
     # Training Loop
@@ -592,6 +608,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
+                scheduler.step()
 
             running += loss.detach() * accumulation_steps
         
@@ -600,6 +617,15 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
            
         print(f"Epoch {epoch + 1}/{hyperparameters.epochs} - Training Loss: {epoch_loss:.4f}")
         
+        # flush leftovers if the last microbatch didn’t hit the boundary
+        if (step + 1) % accumulation_steps != 0:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(ddp_model.parameters(), 1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+
+            scheduler.step()
 
 
         if is_main():
@@ -614,17 +640,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                     mae_thresh=0.0,
                     mape_thresh=0.0,
                 )
-            plateau_value = float(val_metrics["mae"])
-        else:
-            plateau_value = 0.0  # placeholder on non-zero ranks
         
-        metric_tensor = torch.tensor([plateau_value], device=device)
-
-        if dist.is_available() and dist.is_initialized():
-        # make all ranks use rank0's metric
-            dist.broadcast(metric_tensor, src=0)
-
-        scheduler.step(metric_tensor.item())
 
         if is_main():
             cur_lr = optimizer.param_groups[0]["lr"]
