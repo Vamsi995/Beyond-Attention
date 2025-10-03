@@ -526,7 +526,7 @@ def is_main():
     return (not dist.is_available()) or (not dist.is_initialized()) or dist.get_rank() == 0
 
 
-def train(rank, world_size, model, optimizer, hyperparameters, accumulation_steps, data_scaler, val_loader):
+def train(rank, world_size, model, hyperparameters, accumulation_steps, data_scaler, val_loader):
     """Training function for each GPU process.
 
     Args:
@@ -546,7 +546,7 @@ def train(rank, world_size, model, optimizer, hyperparameters, accumulation_step
         find_unused_parameters=True,  
     )
 
-    optimizer = torch.optim.Adam(ddp_model.parameters())
+    optimizer = optim.Adam(ddp_model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
     criterion = hyperparameters.criterion
 
     scaler = GradScaler()  # FP16 scaler
@@ -722,8 +722,7 @@ if __name__ == "__main__":
 
 # Model Initialization
     model = GAT_GRU_Forecaster(hyperparameters.n_feat, hyperparameters.n_hidden, hyperparameters.n_heads, hyperparameters.output_dim, hyperparameters.gru_hidden)
-    optimizer = optim.Adam(model.parameters(), lr=hyperparameters.learning_rate, weight_decay=hyperparameters.weight_decay)
 
     
-    train(local_rank, world_size, model, optimizer, hyperparameters, accumulation_steps, scaler, val_loader)
+    train(local_rank, world_size, model, hyperparameters, accumulation_steps, scaler, val_loader)
     cleanup()
