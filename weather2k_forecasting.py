@@ -10,7 +10,6 @@ Original file is located at
 
 
 import os
-from winreg import REG_LINK
 import numpy as np
 import torch
 import torch.distributed as dist
