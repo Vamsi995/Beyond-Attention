@@ -10,6 +10,7 @@ Original file is located at
 
 
 import os
+from winreg import REG_LINK
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -209,7 +210,7 @@ class GraphAttentionLayer(nn.Module):
             a is an attention mechanism that computes the attention coefficients e_ij, and σ is an activation function.
 
     """
-    def __init__(self, in_features: int, out_features: int, n_heads: int, concat: bool = False, dropout: float = 0.4, leaky_relu_slope: float = 0.2):
+    def __init__(self, in_features: int, out_features: int, n_heads: int, concat: bool = False, dropout: float = 0.2, leaky_relu_slope: float = 0.2):
         super().__init__()
 
         self.n_heads = n_heads # Number of attention heads
@@ -296,7 +297,7 @@ class GraphAttentionLayer(nn.Module):
         # output shape (n_nodes, n_hidden * n_heads)
 
         h_transformed = torch.matmul(h, self.W)  # (B, N, n_heads*n_hidden)
-        # h_transformed = F.dropout(h_transformed, p=self.dropout, training=self.training)
+        h_transformed = F.dropout(h_transformed, p=self.dropout, training=self.training)
         h_transformed = h_transformed.view(B, N, self.n_heads, self.n_hidden).permute(0, 2, 1, 3)  # (B, H, N, d_h)
 
         # getting the attention scores
@@ -320,7 +321,7 @@ class GraphAttentionLayer(nn.Module):
         # attention coefficients are computed as a softmax over the rows
         # for each column j in the attention score matrix e
         attention = F.softmax(e, dim=-1)
-        # attention = F.dropout(attention, self.dropout, training=self.training)
+        attention = F.dropout(attention, self.dropout, training=self.training)
 
         # final node embeddings are computed as a weighted average of the features of its neighbors
         h_prime = torch.matmul(attention, h_transformed)
@@ -421,7 +422,7 @@ class GAT_GRU_Forecaster(nn.Module):
                  output_dim,
                  gru_hidden,
                  num_layers: int = 1,
-                 dropout: float = 0.0,
+                 dropout: float = 0.2,
                  use_vmap: bool = True):
         super().__init__()
 
@@ -667,7 +668,13 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 outputs = data_scaler.inverse_transform(outputs)
                 targets = data_scaler.inverse_transform(targets)
                 loss = criterion(outputs, targets)
-                loss = loss / accumulation_steps
+                l1_penalty = torch.zeros((), device=device)
+                for name, param in getattr(ddp_model, "module", ddp_model).named_parameters():
+                        if param.requires_grad and ("interaction_matrix" in name):
+                            l1_penalty = l1_penalty + param.abs().mean()
+                
+                reg_loss = 0.01 * l1_penalty
+                loss = (loss + reg_loss) / accumulation_steps
 
             
             scaler.scale(loss).backward()
@@ -679,6 +686,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
+                
             
             running += loss.detach() * accumulation_steps
         
