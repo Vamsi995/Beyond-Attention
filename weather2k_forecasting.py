@@ -302,7 +302,7 @@ class GraphAttentionLayer(nn.Module):
         e = (e + e.transpose(-1, -2)) / 2
         e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
         # e = torch.nn.functional.layer_norm(e, e.shape[-1:])
-        e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
+        # e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
 
 
 
