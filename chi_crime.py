@@ -481,7 +481,7 @@ class Hyperparameters:
         self.epochs = 100
 
         self.batch_size = 8
-        self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
+        self.n_feat = 4  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 64
         self.gru_hidden = 64
         self.n_heads = 2
