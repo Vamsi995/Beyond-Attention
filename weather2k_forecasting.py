@@ -27,6 +27,13 @@ from torch.optim.lr_scheduler import LinearLR, SequentialLR, MultiStepLR
 
 from utils import validate_easyst_style
 import copy
+# 2) Plots (train/val loss and val metrics)
+import matplotlib
+matplotlib.use("Agg")           # headless backend for HPC
+import matplotlib.pyplot as plt
+import os, csv, json
+from datetime import datetime
+
 
 
 class MinMax01Scaler:
@@ -302,7 +309,7 @@ class GraphAttentionLayer(nn.Module):
         e = (e + e.transpose(-1, -2)) / 2
         e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
         # e = torch.nn.functional.layer_norm(e, e.shape[-1:])
-        # e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
+        e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
 
 
 
@@ -518,6 +525,70 @@ def is_main():
     return (not dist.is_available()) or (not dist.is_initialized()) or dist.get_rank() == 0
 
 
+
+
+# small helper
+def save_history_and_plots(history, outdir, is_main):
+    if not is_main:
+        return
+    # 1) CSV (rewritten each epoch so you keep progress even if job ends)
+    csv_path = os.path.join(outdir, "history.csv")
+    with open(csv_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["epoch","train_loss","val_loss","val_mae","val_rmse","val_mape","val_rrse","val_corr","lr"])
+        E = len(history["train_loss"])
+        for e in range(E):
+            w.writerow([
+                e+1,
+                history["train_loss"][e],
+                history["val_loss"][e]  if e < len(history["val_loss"])  else "",
+                history["val_mae"][e]   if e < len(history["val_mae"])   else "",
+                history["val_rmse"][e]  if e < len(history["val_rmse"])  else "",
+                history["val_mape"][e]  if e < len(history["val_mape"])  else "",
+                history["val_rrse"][e]  if e < len(history["val_rrse"])  else "",
+                history["val_corr"][e]  if e < len(history["val_corr"])  else "",
+                history["lr"][e]        if e < len(history["lr"])        else "",
+            ])
+
+
+
+    epochs = list(range(1, len(history["train_loss"])+1))
+
+    # Loss curve
+    plt.figure()
+    plt.plot(epochs, history["train_loss"], label="Train loss")
+    if history["val_loss"]:
+        plt.plot(epochs[:len(history["val_loss"])], history["val_loss"], label="Val loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Train / Val Loss")
+    plt.grid(alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(outdir, "loss_curve.png"))
+    plt.close()
+
+    # Validation metrics curve
+    if history["val_mae"]:
+        plt.figure()
+        E = len(history["val_mae"])
+        x = list(range(1, E+1))
+        plt.plot(x, history["val_mae"],   label="MAE")
+        plt.plot(x, history["val_rmse"],  label="RMSE")
+        # show % for MAPE/ sMAPE if you add it later; here we keep MAPE as returned
+        plt.plot(x, [100*m for m in history["val_mape"]], label="MAPE (%)")
+        plt.plot(x, history["val_rrse"],  label="RRSE")
+        plt.plot(x, history["val_corr"],  label="Corr")
+        plt.xlabel("Epoch")
+        plt.ylabel("Value")
+        plt.title("Validation Metrics")
+        plt.grid(alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(outdir, "val_metrics.png"))
+        plt.close()
+
+
 def train(rank, world_size, model, hyperparameters, accumulation_steps, data_scaler, val_loader):
     """Training function for each GPU process.
 
@@ -557,12 +628,33 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
     #     optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
     # )
 
+    # ---- logging / plot dir ----
+    plot_dir = "training_plots"
+    os.makedirs(plot_dir, exist_ok=True)
+
+    history = {
+        "train_loss": [],
+        "val_loss":   [],
+        "val_mae":    [],
+        "val_rmse":   [],
+        "val_mape":   [],
+        "val_rrse":   [],
+        "val_corr":   [],
+        "lr":         [],
+    }
+
+
+
+
     # Training Loop
     for epoch in range(hyperparameters.epochs):
         model.train()  # Set model to training mode
         epoch_loss = 0.0
         running = torch.zeros((), device=device)
         # C = 0
+        sampler = getattr(hyperparameters.train_loader, "sampler", None)
+        if hasattr(sampler, "set_epoch"):
+            sampler.set_epoch(epoch)
 
         optimizer.zero_grad(set_to_none=True)
 
@@ -626,6 +718,18 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                     mae_thresh=0.0,
                     mape_thresh=0.0,
                 )
+            
+                        # ---- NEW: record history & save plots ----
+            history["train_loss"].append(float(epoch_loss))
+            history["val_loss"].append(float(val_metrics.get("loss_scaled", 0.0)))
+            history["val_mae"].append(float(val_metrics["mae"]))
+            history["val_rmse"].append(float(val_metrics["rmse"]))
+            history["val_mape"].append(float(val_metrics["mape"]))   # NOTE: stored as fraction; plot multiplies by 100
+            history["val_rrse"].append(float(val_metrics["rrse"]))
+            history["val_corr"].append(float(val_metrics["corr"]))
+            history["lr"].append(float(cur_lr))
+
+            save_history_and_plots(history, plot_dir, is_main=True)
         
 
         if is_main():
