@@ -787,7 +787,7 @@ class Grid2Graph:
         return x * self.col + y
 
 
-def build_grid_adj_weight(start_pos, end_pos, row, col, args):
+def build_grid_adj_weight(start_pos, end_pos, row, col):
 
     adj_dist = np.load('CHI_Cri_adj_dist.npz')['adj_dist']
     
