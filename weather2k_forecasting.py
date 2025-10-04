@@ -470,7 +470,7 @@ class Hyperparameters:
     # Hyperparameters
 
     def __init__(self, tra_loader, adj):
-        self.learning_rate = 3e-4
+        self.learning_rate = 1e-3
         self.epochs = 100
 
         self.batch_size = 8
@@ -543,7 +543,16 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
 
     scaler = GradScaler()  # FP16 scaler
     adj_mat = hyperparameters.adj_mat.to(device)
-    scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100], gamma=0.5)
+
+    end_factor = 1e-5 / 1e-3  # = 0.01
+
+    scheduler = LinearLR(
+        optimizer,
+        start_factor=1.0,                 # start at base LR (1e-3)
+        end_factor=end_factor,            # end near 1e-5
+        total_iters=hyperparameters.epochs  # 100
+    )
+    # scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100], gamma=0.5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer, mode="min", factor=0.5, patience=1, threshold=1e-3, verbose=is_main()
     # )
