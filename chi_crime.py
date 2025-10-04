@@ -487,8 +487,8 @@ class Hyperparameters:
         self.n_heads = 2
         self.dropout = 0.6
         self.alpha = 0.2
-        self.output_dim = 12  # Traffic flow prediction output (1 for single step, adjust as needed)
-        self.seq_len = 12  # Sequence length (time steps)
+        self.output_dim = 1  # Traffic flow prediction output (1 for single step, adjust as needed)
+        self.seq_len = 30  # Sequence length (time steps)
         self.n_nodes = 1470  # Number of nodes (traffic sensors, locations, etc.)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # train_loader = data_module.train_dataloader()
