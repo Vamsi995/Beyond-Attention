@@ -543,11 +543,7 @@ def save_history_and_plots(history, outdir, is_main):
                 history["train_loss"][e],
                 history["val_loss"][e]  if e < len(history["val_loss"])  else "",
                 history["val_mae"][e]   if e < len(history["val_mae"])   else "",
-                history["val_rmse"][e]  if e < len(history["val_rmse"])  else "",
-                history["val_mape"][e]  if e < len(history["val_mape"])  else "",
-                history["val_rrse"][e]  if e < len(history["val_rrse"])  else "",
-                history["val_corr"][e]  if e < len(history["val_corr"])  else "",
-                history["lr"][e]        if e < len(history["lr"])        else "",
+                history["val_rmse"][e]  if e < len(history["val_rmse"])  else ""
             ])
 
 
@@ -576,9 +572,6 @@ def save_history_and_plots(history, outdir, is_main):
         plt.plot(x, history["val_mae"],   label="MAE")
         plt.plot(x, history["val_rmse"],  label="RMSE")
         # show % for MAPE/ sMAPE if you add it later; here we keep MAPE as returned
-        plt.plot(x, [100*m for m in history["val_mape"]], label="MAPE (%)")
-        plt.plot(x, history["val_rrse"],  label="RRSE")
-        plt.plot(x, history["val_corr"],  label="Corr")
         plt.xlabel("Epoch")
         plt.ylabel("Value")
         plt.title("Validation Metrics")
@@ -724,9 +717,6 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
             history["val_loss"].append(float(val_metrics.get("loss_scaled", 0.0)))
             history["val_mae"].append(float(val_metrics["mae"]))
             history["val_rmse"].append(float(val_metrics["rmse"]))
-            history["val_mape"].append(float(val_metrics["mape"]))   # NOTE: stored as fraction; plot multiplies by 100
-            history["val_rrse"].append(float(val_metrics["rrse"]))
-            history["val_corr"].append(float(val_metrics["corr"]))
             history["lr"].append(float(cur_lr))
 
             save_history_and_plots(history, plot_dir, is_main=True)
