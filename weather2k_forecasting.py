@@ -717,7 +717,6 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
             history["val_loss"].append(float(val_metrics.get("loss_scaled", 0.0)))
             history["val_mae"].append(float(val_metrics["mae"]))
             history["val_rmse"].append(float(val_metrics["rmse"]))
-            history["lr"].append(float(cur_lr))
 
             save_history_and_plots(history, plot_dir, is_main=True)
         
