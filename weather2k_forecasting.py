@@ -570,8 +570,8 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
             with autocast():
                 outputs = ddp_model(inputs, adj_mat)
                 outputs = outputs.transpose(1, 2)
-                outputs = scaler.inverse_transform(outputs)
-                targets = scaler.inverse_transform(targets)
+                outputs = data_scaler.inverse_transform(outputs)
+                targets = data_scaler.inverse_transform(targets)
                 loss = criterion(outputs, targets)
                 loss = loss / accumulation_steps
 
