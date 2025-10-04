@@ -657,6 +657,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
             inputs, targets = inputs.to(device), targets.to(device)
 
             # Forward pass
+            print(inputs.shape)
             b, t, n = inputs.shape
             inputs = inputs.reshape((b, t, n, 1))  # Add a channel dimension
 
