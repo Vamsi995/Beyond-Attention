@@ -240,6 +240,7 @@ class GraphAttentionLayer(nn.Module):
         # nn.init.xavier_uniform_(self.interaction_matrix_v.data, gain=1.414)
         self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1866, 1866))
         nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
+        self.logit_scale = nn.Parameter(torch.tensor(1.5))
 
 
 
@@ -312,6 +313,21 @@ class GraphAttentionLayer(nn.Module):
         e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
 
 
+        H, N, _ = e.shape
+
+        # 2a) give diagonal a huge bias so it stays in top-k
+        e = e + torch.diag_embed(torch.full((H, N), 1e6, device=e.device, dtype=e.dtype))
+
+        # 2b) then do top-k sparsification
+        k = 64  # try 64; later tune 32–128
+        vals, idx = torch.topk(e, k=k, dim=-1)
+        masked = torch.full_like(e, -1e4)
+        masked.scatter_(-1, idx, vals)
+        e = masked
+
+        # 2c) (optional) temperature to sharpen
+        attention = torch.softmax(self.logit_scale * e, dim=-1)
+
 
         # Set the attention score for non-existent edges to -9e15 (MASKING NON-EXISTENT EDGES)
         # connectivity_mask = -9e16 * torch.ones_like(e)
@@ -319,7 +335,7 @@ class GraphAttentionLayer(nn.Module):
 
         # attention coefficients are computed as a softmax over the rows
         # for each column j in the attention score matrix e
-        attention = F.softmax(e, dim=-1)
+        # attention = F.softmax(e, dim=-1)
         attention = F.dropout(attention, self.dropout, training=self.training)
 
         # final node embeddings are computed as a weighted average of the features of its neighbors
