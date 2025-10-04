@@ -804,9 +804,6 @@ def load_data(batch_size, accumulation_steps):
     assert data.shape == (7670, 1470, 4), 'shape error: {}'.format(data.shape)
     g2g_hander = Grid2Graph(row = raw_data.shape[0], col = raw_data.shape[1])
     adj = g2g_hander.constructGraph(hop=1)
-    loc_list = None
-    start_date = '2002-01-01'
-    time = pd.date_range(start_date, periods=data.shape[0], freq = 'D')
 
     data, scaler = normalize_dataset(data, 'max01', False)
 
