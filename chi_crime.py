@@ -307,9 +307,9 @@ class GraphAttentionLayer(nn.Module):
         # e = self.interaction_matrix_u @ self.interaction_matrix_v
         e = self.interaction_matrix
         # e = (e + e.transpose(-1, -2)) / 2
-        e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
+        # e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
         # e = torch.nn.functional.layer_norm(e, e.shape[-1:])
-        e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
+        # e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
 
 
 
@@ -618,7 +618,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
         optimizer,
         start_factor=1.0,                 # start at base LR (1e-3)
         end_factor=end_factor,            # end near 1e-5
-        total_iters=10  # 100
+        total_iters=100  # 100
     )
     # scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100], gamma=0.5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
