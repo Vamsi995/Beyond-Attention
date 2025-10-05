@@ -238,9 +238,9 @@ class GraphAttentionLayer(nn.Module):
         # self.interaction_matrix_v = nn.Parameter(torch.ones(n_heads, 100, 1866))
         # nn.init.xavier_uniform_(self.interaction_matrix_u.data, gain=1.414)
         # nn.init.xavier_uniform_(self.interaction_matrix_v.data, gain=1.414)
-        self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1470, 1470))
-        nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
-        self.logit_scale = nn.Parameter(torch.zeros(1))
+        # self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1470, 1470))
+        # nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
+        # self.logit_scale = nn.Parameter(torch.zeros(1))
 
 
 
@@ -306,17 +306,17 @@ class GraphAttentionLayer(nn.Module):
 
         # # e: (H, N, N)
         # e = self.interaction_matrix_u @ self.interaction_matrix_v
-        e += self.logit_scale * self.interaction_matrix
+        # e += self.logit_scale * self.interaction_matrix
         # e = (e + e.transpose(-1, -2)) / 2
-        # e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
+        e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
         # e = torch.nn.functional.layer_norm(e, e.shape[-1:])
         # e = torch.nn.functional.layer_norm(e, normalized_shape=(e.shape[-2], e.shape[-1]))
 
 
 
         # Set the attention score for non-existent edges to -9e15 (MASKING NON-EXISTENT EDGES)
-        # connectivity_mask = -9e16 * torch.ones_like(e)
-        # e = torch.where(adj_mat > 0, e, connectivity_mask) # masked attention scores
+        connectivity_mask = -9e16 * torch.ones_like(e)
+        e = torch.where(adj_mat > 0, e, connectivity_mask) # masked attention scores
 
         # attention coefficients are computed as a softmax over the rows
         # for each column j in the attention score matrix e
