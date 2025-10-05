@@ -244,7 +244,8 @@ def validate_easyst_style(val_loader, model, device, adj_mat, scaler, criterion,
 
 
             # Reshape predictions to match targets
-            predictions = predictions.transpose(1, 2)  # Reshape predictions
+            if len(predictions.shape) == 3:
+                predictions = predictions.transpose(1, 2)  # Reshape predictions
 
             # Apply inverse transformation if scaler is provided
             if scaler is not None:
