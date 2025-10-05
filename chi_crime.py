@@ -618,7 +618,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
         optimizer,
         start_factor=1.0,                 # start at base LR (1e-3)
         end_factor=end_factor,            # end near 1e-5
-        total_iters=hyperparameters.epochs  # 100
+        total_iters=10  # 100
     )
     # scheduler = MultiStepLR(optimizer, milestones=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100], gamma=0.5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
