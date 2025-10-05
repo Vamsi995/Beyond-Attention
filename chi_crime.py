@@ -420,6 +420,7 @@ class GAT_GRU_Forecaster(nn.Module):
                  n_heads,
                  output_dim,
                  gru_hidden,
+                 horizon,
                  num_layers: int = 1,
                  dropout: float = 0.2,
                  use_vmap: bool = True):
@@ -439,7 +440,7 @@ class GAT_GRU_Forecaster(nn.Module):
             dropout=dropout if num_layers > 1 else 0.0,
             bidirectional=False
         )
-        self.head = nn.Linear(self.gru_hidden, output_dim)
+        self.head = nn.Linear(self.gru_hidden, horizon * output_dim)
 
     def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
         B, T, N, Fin = x.shape
@@ -464,9 +465,8 @@ class GAT_GRU_Forecaster(nn.Module):
         y, _ = self.gru(z_seq)                              # (B*N, T, H_gru)
         y_last = y[:, -1]                                   # last step per sequence: (B*N, H_gru)
 
-        # ---- 3) Map to output per node ----
-        out = self.head(y_last).view(B, N, -1)              # (B, N, output_dim)
-
+        out = self.head(y_last).view(B, N, self.horizon, self.out_features)
+        out = out.permute(0, 2, 1, 3).contiguous()              # (B, T_out, N, F_out)
         return out
 
 """## HyperParams"""
@@ -487,7 +487,8 @@ class Hyperparameters:
         self.n_heads = 2
         self.dropout = 0.6
         self.alpha = 0.2
-        self.output_dim = 1  # Traffic flow prediction output (1 for single step, adjust as needed)
+        self.horizon = 1
+        self.output_dim = 4  # Traffic flow prediction output (1 for single step, adjust as needed)
         self.seq_len = 30  # Sequence length (time steps)
         self.n_nodes = 1470  # Number of nodes (traffic sensors, locations, etc.)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -863,7 +864,7 @@ if __name__ == "__main__":
     hyperparameters = Hyperparameters(tra_loader, adj)
 
 # Model Initialization
-    model = GAT_GRU_Forecaster(hyperparameters.n_feat, hyperparameters.n_hidden, hyperparameters.n_heads, hyperparameters.output_dim, hyperparameters.gru_hidden)
+    model = GAT_GRU_Forecaster(hyperparameters.n_feat, hyperparameters.n_hidden, hyperparameters.n_heads, hyperparameters.output_dim, hyperparameters.gru_hidden, hyperparameters.horizon)
 
     
     train(local_rank, world_size, model, hyperparameters, accumulation_steps, scaler, val_loader)
