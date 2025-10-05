@@ -440,7 +440,10 @@ class GAT_GRU_Forecaster(nn.Module):
             dropout=dropout if num_layers > 1 else 0.0,
             bidirectional=False
         )
+        self.horizon = horizon
+        self.output_dim = output_dim
         self.head = nn.Linear(self.gru_hidden, horizon * output_dim)
+        
 
     def forward(self, x: torch.Tensor, adj: torch.Tensor) -> torch.Tensor:
         B, T, N, Fin = x.shape
@@ -465,7 +468,7 @@ class GAT_GRU_Forecaster(nn.Module):
         y, _ = self.gru(z_seq)                              # (B*N, T, H_gru)
         y_last = y[:, -1]                                   # last step per sequence: (B*N, H_gru)
 
-        out = self.head(y_last).view(B, N, self.horizon, self.out_features)
+        out = self.head(y_last).view(B, N, self.horizon, self.output_dim)
         out = out.permute(0, 2, 1, 3).contiguous()              # (B, T_out, N, F_out)
         return out
 
