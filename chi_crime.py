@@ -671,6 +671,7 @@ def train(rank, world_size, model, hyperparameters, accumulation_steps, data_sca
                 outputs = outputs.transpose(1, 2)
                 outputs = data_scaler.inverse_transform(outputs)
                 targets = data_scaler.inverse_transform(targets)
+                print(outputs.shape, targets.shape)
                 loss = criterion(outputs, targets)
                 l1_penalty = torch.zeros((), device=device)
                 for name, param in getattr(ddp_model, "module", ddp_model).named_parameters():
