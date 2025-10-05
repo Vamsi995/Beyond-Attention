@@ -240,6 +240,7 @@ class GraphAttentionLayer(nn.Module):
         # nn.init.xavier_uniform_(self.interaction_matrix_v.data, gain=1.414)
         self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1470, 1470))
         nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
+        self.logit_scale = nn.Parameter(torch.tensor(0))
 
 
 
@@ -301,11 +302,11 @@ class GraphAttentionLayer(nn.Module):
 
         # getting the attention scores
         # output shape (n_heads, n_nodes, n_nodes)
-        # e = self._get_attention_scores(h_transformed)
+        e = self._get_attention_scores(h_transformed)
 
         # # e: (H, N, N)
         # e = self.interaction_matrix_u @ self.interaction_matrix_v
-        e = self.leakyrelu(self.interaction_matrix)
+        e += self.logit_scale * self.interaction_matrix
         # e = (e + e.transpose(-1, -2)) / 2
         # e = e / (torch.linalg.norm(e, dim=-1, keepdim=True) + 1e-8)
         # e = torch.nn.functional.layer_norm(e, e.shape[-1:])
