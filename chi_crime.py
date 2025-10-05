@@ -240,7 +240,7 @@ class GraphAttentionLayer(nn.Module):
         # nn.init.xavier_uniform_(self.interaction_matrix_v.data, gain=1.414)
         self.interaction_matrix = nn.Parameter(torch.ones(n_heads, 1470, 1470))
         nn.init.xavier_uniform_(self.interaction_matrix.data, gain=1.414)
-        self.logit_scale = nn.Parameter(torch.tensor(0))
+        self.logit_scale = nn.Parameter(torch.zeros(1))
 
 
 
