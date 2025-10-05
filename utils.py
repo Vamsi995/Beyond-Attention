@@ -235,8 +235,8 @@ def validate_easyst_style(val_loader, model, device, adj_mat, scaler, criterion,
             x, y = x.to(device), y.to(device)
 
             # Prepare input data (add channel dimension if needed)
-            b, t, n = x.shape
             if len(x.shape) == 3:
+                b, t, n = x.shape
                 x = x.reshape((b, t, n, 1))  # Add a channel dimension
 
             # Get predictions
