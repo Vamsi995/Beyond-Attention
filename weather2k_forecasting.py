@@ -482,8 +482,8 @@ class Hyperparameters:
         self.batch_size = 8
         self.n_feat = 1  # Number of features for each node (adjust according to your dataset)
         self.n_hidden = 64
-        self.gru_hidden = 64
-        self.n_heads = 2
+        self.gru_hidden = 128
+        self.n_heads = 4
         self.dropout = 0.6
         self.alpha = 0.2
         self.output_dim = 12  # Traffic flow prediction output (1 for single step, adjust as needed)
