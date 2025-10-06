@@ -4,10 +4,10 @@ import torch
 from tqdm import tqdm
 
 def MAE_torch(pred, true, mask_value=None):
-    if mask_value != None:
-        mask = torch.gt(true, mask_value)
-        pred = torch.masked_select(pred, mask)
-        true = torch.masked_select(true, mask)
+    # if mask_value != None:
+    #     mask = torch.gt(true, mask_value)
+    #     pred = torch.masked_select(pred, mask)
+    #     true = torch.masked_select(true, mask)
     return torch.mean(torch.abs(true-pred))
 
 def MSE_torch(pred, true, mask_value=None):
@@ -95,10 +95,10 @@ def SMAPE_torch(pred, true, mask_value=None):
 
 
 def MAE_np(pred, true, mask_value=None):
-    if mask_value != None:
-        mask = np.where(true > (mask_value), True, False)
-        true = true[mask]
-        pred = pred[mask]
+    # if mask_value != None:
+    #     mask = np.where(true > (mask_value), True, False)
+    #     true = true[mask]
+    #     pred = pred[mask]
     MAE = np.mean(np.absolute(pred-true))
     return MAE
 
